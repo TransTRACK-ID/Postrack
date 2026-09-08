@@ -74,7 +74,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const protocol = resolveRequestProtocol(body.protocol);
-  const method = validateRequestMethod(protocol, body.method || (protocol === 'websocket' ? 'WS' : 'GET'));
+  const method = validateRequestMethod(
+    protocol,
+    body.method || (protocol === 'websocket' ? 'WS' : protocol === 'sse' ? 'SSE' : 'GET')
+  );
   const trimmedUrl = validateRequestUrl(protocol, body.url);
 
   try {

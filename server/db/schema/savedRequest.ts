@@ -6,20 +6,22 @@ import { collections } from './collection';
 /**
  * Supported HTTP methods for saved requests
  */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'WS';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'WS' | 'SSE';
 
 /**
- * Request protocol type — HTTP REST or native WebSocket
+ * Request protocol type — HTTP REST, WebSocket, or Server-Sent Events
  */
-export type RequestProtocol = 'http' | 'websocket';
+export type RequestProtocol = 'http' | 'websocket' | 'sse';
 
 /**
- * WebSocket-specific persisted configuration
+ * WebSocket / SSE persisted configuration
  */
 export type SocketConfig = {
   subprotocols?: string[];
   initialMessage?: string;
   messageFormat?: 'text' | 'json';
+  lastEventId?: string;
+  withCredentials?: boolean;
 } | null;
 
 /**

@@ -187,6 +187,8 @@ export default defineEventHandler(async (event) => {
       updateData.protocol = effectiveProtocol;
       if (effectiveProtocol === 'websocket') {
         updateData.method = 'WS';
+      } else if (effectiveProtocol === 'sse') {
+        updateData.method = 'SSE';
       }
     }
 
@@ -226,6 +228,8 @@ export default defineEventHandler(async (event) => {
       updateData.url = validateRequestUrl(effectiveProtocol, body.url);
     } else if (body.protocol === 'websocket' && existing[0].url) {
       validateRequestUrl('websocket', existing[0].url);
+    } else if (body.protocol === 'sse' && existing[0].url) {
+      validateRequestUrl('sse', existing[0].url);
     }
 
     // Set headers (can be null or object)

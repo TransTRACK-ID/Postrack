@@ -6,7 +6,8 @@ export const METHOD_COLORS = Object.freeze({
   DELETE: '#EF5350',
   HEAD: '#8b5cf6',
   OPTIONS: '#64748b',
-  WS: '#14b8a6'
+  WS: '#14b8a6',
+  SSE: '#f97316'
 } as const);
 
 const METHOD_COLOR_CLASSES: Record<string, string> = {
@@ -17,7 +18,8 @@ const METHOD_COLOR_CLASSES: Record<string, string> = {
   DELETE: 'text-method-delete',
   HEAD: 'text-method-head',
   OPTIONS: 'text-method-options',
-  WS: 'text-method-ws'
+  WS: 'text-method-ws',
+  SSE: 'text-method-sse'
 };
 
 export function getMethodColor(method: string): string {

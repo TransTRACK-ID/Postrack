@@ -21,7 +21,8 @@ const methodClasses: Record<string, string> = {
   put: 'bg-method-put/15 text-method-put',
   delete: 'bg-method-delete/15 text-method-delete',
   patch: 'bg-method-patch/15 text-method-patch',
-  ws: 'bg-method-ws/15 text-method-ws'
+  ws: 'bg-method-ws/15 text-method-ws',
+  sse: 'bg-method-sse/15 text-method-sse'
 };
 
 const badgeClass = computed(() => {

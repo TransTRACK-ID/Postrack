@@ -9,6 +9,7 @@ import RequestActivityLog from './RequestActivityLog.vue'
 import MockConfiguration from './MockConfiguration.vue'
 import BulkEditPanel from './BulkEditPanel.vue'
 import WebSocketPanel from './WebSocketPanel.vue'
+import SsePanel from './SsePanel.vue'
 import { useBulkKeyValueEdit } from '~/composables/useBulkKeyValueEdit'
 import { useUsageTracking } from '~/composables/useUsageTracking'
 import { useClientRequest, isLocalUrl } from '~/composables/useClientRequest'
@@ -236,11 +237,11 @@ const handleCurlPaste = (command: string) => {
 };
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'] as const;
-const REQUEST_PROTOCOLS = ['http', 'websocket'] as const;
+const REQUEST_PROTOCOLS = ['http', 'websocket', 'sse'] as const;
 
 const form = ref({
   protocol: (props.request.protocol || 'http') as typeof REQUEST_PROTOCOLS[number],
-  method: props.request.method as typeof HTTP_METHODS[number] | 'WS',
+  method: props.request.method as typeof HTTP_METHODS[number] | 'WS' | 'SSE',
   url: props.request.url
 });
 
@@ -253,9 +254,11 @@ const socketConfig = ref<import('../../server/db/schema/savedRequest').SocketCon
 );
 
 const isWebSocket = computed(() => form.value.protocol === 'websocket');
+const isSse = computed(() => form.value.protocol === 'sse');
+const isStreamProtocol = computed(() => isWebSocket.value || isSse.value);
 
 const availableTabs = computed((): TabType[] => {
-  if (isWebSocket.value) {
+  if (isStreamProtocol.value) {
     return props.readOnly
       ? ['params', 'headers', 'auth', 'examples', 'activity']
       : ['params', 'headers', 'auth', 'preScript', 'postScript', 'examples', 'activity'];
@@ -275,7 +278,15 @@ const handleProtocolChange = (newProtocol: typeof REQUEST_PROTOCOLS[number]) => 
     if (activeTab.value === 'body' || activeTab.value === 'mock') {
       activeTab.value = 'params';
     }
-  } else if (form.value.method === 'WS') {
+  } else if (newProtocol === 'sse') {
+    form.value.method = 'SSE';
+    if (!form.value.url || form.value.url.startsWith('ws')) {
+      form.value.url = form.value.url.replace(/^wss?:\/\//, 'https://') || 'https://';
+    }
+    if (activeTab.value === 'body' || activeTab.value === 'mock') {
+      activeTab.value = 'params';
+    }
+  } else if (form.value.method === 'WS' || form.value.method === 'SSE') {
     form.value.method = 'GET';
     if (form.value.url.startsWith('ws')) {
       form.value.url = form.value.url.replace(/^wss?:\/\//, 'https://');
@@ -485,7 +496,7 @@ const responsePanelHeight = computed(() => {
 });
 
 const requestContentStyle = computed(() => {
-  if (isWebSocket.value) {
+  if (isStreamProtocol.value) {
     return { flex: '1 1 0%', minHeight: '0' };
   }
   if (isMobile.value || !hasResponse.value) {
@@ -498,7 +509,7 @@ const requestContentStyle = computed(() => {
 });
 
 const tabPanelClass = computed(() =>
-  isWebSocket.value
+  isStreamProtocol.value
     ? 'ws-tab-panel flex flex-col min-h-0 overflow-hidden'
     : 'flex-1 flex flex-col overflow-hidden'
 );
@@ -905,7 +916,7 @@ const loadRequestData = async (request: HttpRequest) => {
     
     // Reset all form state first to prevent stale data
     form.value.protocol = (request.protocol || 'http') as typeof REQUEST_PROTOCOLS[number];
-    form.value.method = request.method as typeof HTTP_METHODS[number] | 'WS';
+    form.value.method = request.method as typeof HTTP_METHODS[number] | 'WS' | 'SSE';
     form.value.url = request.url;
     socketConfig.value = request.socketConfig || {
       subprotocols: [],
@@ -3458,7 +3469,7 @@ watch(inheritFromParent, (newValue) => {
 })
 
 const sendRequest = async () => {
-  if (!form.value.url || isWebSocket.value) return;
+  if (!form.value.url || isStreamProtocol.value) return;
 
   if (authType.value === 'oauth2' && oauth2.value.accessToken) {
     await autoRefreshToken();
@@ -3878,13 +3889,14 @@ defineExpose({
           >
             <option value="http">HTTP</option>
             <option value="websocket">WebSocket</option>
+            <option value="sse">SSE</option>
           </select>
           <span
             v-else
             class="py-2.5 px-2 border-r border-border-default font-semibold text-xs min-w-[90px] shrink-0 text-center uppercase text-text-secondary"
-          >{{ form.protocol === 'websocket' ? 'WS' : 'HTTP' }}</span>
+          >{{ form.protocol === 'websocket' ? 'WS' : form.protocol === 'sse' ? 'SSE' : 'HTTP' }}</span>
           <select 
-            v-if="!readOnly && !isWebSocket"
+            v-if="!readOnly && !isStreamProtocol"
             v-model="form.method" 
             :class="[
               'py-2.5 px-3 bg-transparent border-none border-r border-border-default font-semibold text-sm cursor-pointer min-w-[100px] shrink-0 focus:outline-none',
@@ -3898,6 +3910,10 @@ defineExpose({
             class="py-2.5 px-3 border-r border-border-default font-semibold text-sm min-w-[100px] shrink-0 text-center text-method-ws"
           >WS</span>
           <span
+            v-else-if="isSse"
+            class="py-2.5 px-3 border-r border-border-default font-semibold text-sm min-w-[100px] shrink-0 text-center text-method-sse"
+          >SSE</span>
+          <span
             v-else
             class="py-2.5 px-3 border-r border-border-default font-semibold text-sm min-w-[100px] shrink-0 text-center"
             :class="methodColors(form.method)"
@@ -3907,14 +3923,14 @@ defineExpose({
             :disabled="readOnly"
             :variables="environmentVariables"
             :path-variables="pathVariables.filter(v => v.enabled).map(v => v.key)"
-            :placeholder="isWebSocket ? 'wss://api.example.com/socket' : 'https://api.example.com/endpoint'"
+            :placeholder="isWebSocket ? 'wss://api.example.com/socket' : isSse ? 'https://api.example.com/events' : 'https://api.example.com/endpoint'"
             class="flex-1 min-w-0 text-text-primary font-mono text-sm placeholder:text-text-muted overflow-hidden url-input-inline"
             @update:variable="(...args) => emit('update:variable', ...args)"
             @curl-paste="handleCurlPaste"
-            @keyup.enter="!isWebSocket && sendRequest()"
+            @keyup.enter="!isStreamProtocol && sendRequest()"
           />
           <button
-            v-if="!isWebSocket"
+            v-if="!isStreamProtocol"
             :class="[
               'shrink-0 py-2.5 px-8 font-semibold rounded-md border-none cursor-pointer transition-all duration-fast flex items-center gap-2',
               isLoading
@@ -3938,7 +3954,7 @@ defineExpose({
             {{ isLoading ? 'Cancel' : (inheritFromParent && collectionAuthLoading) ? 'Loading Auth...' : 'Send' }}
           </button>
           <button
-            v-if="!readOnly && !isWebSocket"
+            v-if="!readOnly && !isStreamProtocol"
             @click="useServerProxy = !useServerProxy"
             :class="[
               'shrink-0 py-2.5 px-3 font-medium rounded-md border cursor-pointer transition-all duration-fast flex items-center gap-1.5 text-xs',
@@ -3993,8 +4009,8 @@ defineExpose({
         <div 
           class="request-content-area flex flex-col overflow-hidden min-h-0"
           :class="{
-            'flex-1': isWebSocket || (!isMobile && hasResponse && isResponseCollapsed),
-            'is-websocket-layout': isWebSocket
+            'flex-1': isStreamProtocol || (!isMobile && hasResponse && isResponseCollapsed),
+            'is-websocket-layout': isStreamProtocol
           }"
           :style="requestContentStyle"
         >
@@ -5090,11 +5106,28 @@ defineExpose({
             @socket-config-change="handleSocketConfigChange"
           />
         </div>
+
+        <div
+          v-if="isSse"
+          class="ws-panel-host flex-1 min-h-0 overflow-hidden flex flex-col border-t border-border-default"
+        >
+          <SsePanel
+            class="h-full min-h-0"
+            :url="form.url"
+            :headers="{ ...buildHeadersRecord(), ..._buildAuthHeaders() }"
+            :socket-config="socketConfig"
+            :environment-id="environmentId"
+            :share-token="isSharedWorkspace ? shareToken : undefined"
+            :auth-query-params="_buildAuthQueryParams()"
+            :pre-script="preScript"
+            @socket-config-change="handleSocketConfigChange"
+          />
+        </div>
         </div><!-- /REQUEST CONTENT AREA -->
 
         <!-- RESIZE HANDLE (only on desktop when there's a response) -->
         <div
-          v-if="!isMobile && hasResponse && !isResponseCollapsed && !isWebSocket"
+          v-if="!isMobile && hasResponse && !isResponseCollapsed && !isStreamProtocol"
           class="resize-handle group flex-shrink-0"
           :class="{ 'is-dragging': isDragging }"
           @mousedown="startDrag"
@@ -5114,7 +5147,7 @@ defineExpose({
 
         <!-- RESPONSE PANEL (Always visible, collapsible, at the bottom) -->
         <div 
-          v-if="!isMobile && !isWebSocket"
+          v-if="!isMobile && !isStreamProtocol"
           class="response-panel flex flex-col overflow-hidden border-t border-border-default bg-bg-secondary flex-shrink-0 min-h-0 mt-auto"
           :class="{ 'is-collapsed': isResponseCollapsed || !hasResponse }"
           :style="{ height: !hasResponse ? COLLAPSED_HEIGHT + 'px' : responsePanelHeight + 'px' }"

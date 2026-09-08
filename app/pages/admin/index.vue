@@ -67,7 +67,7 @@ interface HttpRequest {
   folderId: string | null;
   collectionId?: string | null;
   name: string;
-  protocol?: 'http' | 'websocket';
+  protocol?: 'http' | 'websocket' | 'sse';
   method: string;
   url: string;
   headers: Record<string, string> | null;
@@ -394,8 +394,14 @@ const normalizeRequestForTab = (request: Partial<HttpRequest>): HttpRequest => {
   folderId: typeof request.folderId === 'string' || request.folderId === null ? request.folderId : '',
   collectionId: typeof request.collectionId === 'string' || request.collectionId === null ? request.collectionId : null,
   name: typeof request.name === 'string' && request.name.trim().length > 0 ? request.name : 'Untitled Request',
-  protocol: request.protocol === 'websocket' ? 'websocket' : 'http',
-  method: typeof request.method === 'string' ? request.method : (request.protocol === 'websocket' ? 'WS' : 'GET'),
+  protocol: request.protocol === 'websocket'
+    ? 'websocket'
+    : request.protocol === 'sse'
+      ? 'sse'
+      : 'http',
+  method: typeof request.method === 'string'
+    ? request.method
+    : (request.protocol === 'websocket' ? 'WS' : request.protocol === 'sse' ? 'SSE' : 'GET'),
   url: typeof request.url === 'string' ? request.url : '',
   headers: request.headers && typeof request.headers === 'object' && !Array.isArray(request.headers)
     ? request.headers as Record<string, string>
@@ -2612,7 +2618,7 @@ const handleCloseTabs = (tabKeys: string[]) => {
   }
 };
 
-const handleNewTab = (protocol: 'http' | 'websocket' = 'http') => {
+const handleNewTab = (protocol: 'http' | 'websocket' | 'sse' = 'http') => {
   if (!canEditWorkspace.value) return;
   flushActiveTabDraft();
   activeAdminPanel.value = 'requests';
@@ -2620,10 +2626,14 @@ const handleNewTab = (protocol: 'http' | 'websocket' = 'http') => {
     id: '',
     folderId: '',
     collectionId: null,
-    name: protocol === 'websocket' ? 'Untitled WebSocket' : 'Untitled Request',
+    name: protocol === 'websocket'
+      ? 'Untitled WebSocket'
+      : protocol === 'sse'
+        ? 'Untitled SSE'
+        : 'Untitled Request',
     protocol,
-    method: protocol === 'websocket' ? 'WS' : 'GET',
-    url: protocol === 'websocket' ? 'wss://' : '',
+    method: protocol === 'websocket' ? 'WS' : protocol === 'sse' ? 'SSE' : 'GET',
+    url: protocol === 'websocket' ? 'wss://' : protocol === 'sse' ? 'https://' : '',
     headers: null,
     body: null,
     auth: null,
@@ -2631,6 +2641,9 @@ const handleNewTab = (protocol: 'http' | 'websocket' = 'http') => {
       subprotocols: [],
       initialMessage: '',
       messageFormat: 'text'
+    } : protocol === 'sse' ? {
+      lastEventId: '',
+      withCredentials: false
     } : null,
     bodyFormat: 'none',
     jsonBody: '',
@@ -4425,6 +4438,15 @@ onDeactivated(() => {
                 <path d="M12 8v8"></path>
               </svg>
               New WebSocket Tab
+            </button>
+            <button v-if="canEditWorkspace" class="btn btn-secondary" @click="handleNewTab('sse')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19h16"></path>
+                <path d="M4 15h16"></path>
+                <path d="M4 11h16"></path>
+                <path d="M4 7h10"></path>
+              </svg>
+              New SSE Tab
             </button>
           </div>
         </div>

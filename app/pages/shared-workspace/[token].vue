@@ -16,7 +16,7 @@ interface HttpRequest {
   id: string;
   folderId: string;
   name: string;
-  protocol?: 'http' | 'websocket';
+  protocol?: 'http' | 'websocket' | 'sse';
   method: string;
   url: string;
   headers: Record<string, string> | null;

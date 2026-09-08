@@ -49,6 +49,7 @@ export default {
         'method-head': '#8b5cf6',
         'method-options': '#64748b',
         'method-ws': '#14b8a6',
+        'method-sse': '#f97316',
 
         // Status colors (aliases)
         'status-success': '#73BF69',

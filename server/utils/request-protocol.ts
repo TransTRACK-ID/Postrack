@@ -1,11 +1,16 @@
 import type { HttpMethod, RequestProtocol, SocketConfig } from '../db/schema/savedRequest';
 
 export const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
-export const VALID_PROTOCOLS: RequestProtocol[] = ['http', 'websocket'];
+export const VALID_PROTOCOLS: RequestProtocol[] = ['http', 'websocket', 'sse'];
 
 export function isWebSocketUrl(url: string): boolean {
   const trimmed = url.trim().toLowerCase();
   return trimmed.startsWith('ws://') || trimmed.startsWith('wss://');
+}
+
+export function isSseUrl(url: string): boolean {
+  const trimmed = url.trim().toLowerCase();
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
 }
 
 export function validateRequestProtocol(protocol: RequestProtocol): void {
@@ -35,6 +40,16 @@ export function validateRequestMethod(protocol: RequestProtocol, method: string)
       });
     }
     return 'WS';
+  }
+
+  if (protocol === 'sse') {
+    if (upperMethod !== 'SSE') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'SSE requests must use method SSE'
+      });
+    }
+    return 'SSE';
   }
 
   if (!HTTP_METHODS.includes(upperMethod)) {
@@ -67,6 +82,13 @@ export function validateRequestUrl(protocol: RequestProtocol, url: string): stri
     throw createError({
       statusCode: 400,
       statusMessage: 'WebSocket URL must start with ws:// or wss://'
+    });
+  }
+
+  if (protocol === 'sse' && !isSseUrl(trimmedUrl)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'SSE URL must start with http:// or https://'
     });
   }
 
