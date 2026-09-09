@@ -644,24 +644,38 @@ defineExpose({
             </div>
 
             <div v-else-if="getActiveSectionTab(example) === 'response' && example.body">
-              <div class="text-[11px] font-medium text-text-muted mb-1.5">Response Body</div>
-              <pre class="p-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-xs font-mono text-text-secondary overflow-x-auto max-h-48 overflow-y-auto">{{ formatExampleBody(example.body) }}</pre>
+              <ResizableCodePreview
+                label="Response Body"
+                :content="formatExampleBody(example.body)"
+                :storage-key="`example-response-body-${example.id}`"
+              />
             </div>
 
             <div v-else-if="getActiveSectionTab(example) === 'request'">
               <div v-if="hasExampleQueryParams(example.requestQueryParams)" class="mb-3">
-                <div class="text-[11px] font-medium text-text-muted mb-1.5">Request Query Params</div>
-                <pre class="p-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-xs font-mono text-text-secondary overflow-x-auto max-h-36 overflow-y-auto">{{ formatExampleBody(example.requestQueryParams) }}</pre>
+                <ResizableCodePreview
+                  label="Request Query Params"
+                  :content="formatExampleBody(example.requestQueryParams)"
+                  :storage-key="`example-request-query-${example.id}`"
+                  :default-height="144"
+                />
               </div>
               <div v-if="example.requestBody">
-                <div class="text-[11px] font-medium text-text-muted mb-1.5">Request Body</div>
-                <pre class="p-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-xs font-mono text-text-secondary overflow-x-auto max-h-48 overflow-y-auto">{{ formatExampleBody(example.requestBody) }}</pre>
+                <ResizableCodePreview
+                  label="Request Body"
+                  :content="formatExampleBody(example.requestBody)"
+                  :storage-key="`example-request-body-${example.id}`"
+                />
               </div>
             </div>
 
             <div v-else-if="getActiveSectionTab(example) === 'headers' && hasExampleHeaders(example.headers)">
-              <div class="text-[11px] font-medium text-text-muted mb-1.5">Response Headers</div>
-              <pre class="p-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-xs font-mono text-text-secondary overflow-x-auto max-h-36 overflow-y-auto">{{ formatExampleBody(example.headers) }}</pre>
+              <ResizableCodePreview
+                label="Response Headers"
+                :content="formatExampleBody(example.headers)"
+                :storage-key="`example-response-headers-${example.id}`"
+                :default-height="144"
+              />
             </div>
           </div>
         </div>
