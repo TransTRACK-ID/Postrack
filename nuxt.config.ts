@@ -20,6 +20,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      script: [
+        {
+          key: 'text-scale-bootstrap',
+          innerHTML: `(function(){try{var k='postrack-text-scale',s=localStorage.getItem(k),v=s?parseFloat(s):1;if(!Number.isFinite(v))v=1;v=Math.min(1.375,Math.max(0.875,v));document.documentElement.style.setProperty('--text-scale',String(v));document.documentElement.dataset.textScale=String(v);}catch(e){}})();`,
+          type: 'text/javascript',
+        },
+      ],
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },

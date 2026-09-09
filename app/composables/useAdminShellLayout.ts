@@ -4,6 +4,7 @@ const SIDEBARLESS_ADMIN_PATHS = new Set([
   '/admin/super-admin',
   '/admin/super-usage',
   '/admin/sso',
+  '/admin/settings',
 ]);
 
 const DEFAULT_ADMIN_BACK = {

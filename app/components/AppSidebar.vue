@@ -1845,7 +1845,7 @@ defineExpose({
           <!-- Project Header -->
           <div
             :class="[
-              'flex items-center gap-2 py-2 px-3 text-text-primary text-[13px] font-semibold cursor-pointer transition-colors duration-fast hover:bg-bg-hover group relative',
+              'flex items-center gap-2 py-2 px-3 text-text-primary sidebar-name-project font-semibold cursor-pointer transition-colors duration-fast hover:bg-bg-hover group relative',
               dropTarget?.type === 'project' && dropTarget?.id === project.id && (dropTarget?.position === 'before' || dropTarget?.position === 'after') ? 'bg-accent-blue/5' : ''
             ]"
             :draggable="canDragProjects"
@@ -1913,7 +1913,7 @@ defineExpose({
               <div v-for="collection in project.collections" :key="collection.id" class="mb-0.5">
                 <!-- Collection Header -->
                 <div
-                  class="flex items-center gap-2 py-2 px-3 text-text-primary text-xs font-medium cursor-pointer transition-colors duration-fast hover:bg-bg-hover group/groupitem relative"
+                  class="flex items-center gap-2 py-2 px-3 text-text-primary sidebar-name-collection font-medium cursor-pointer transition-colors duration-fast hover:bg-bg-hover group/groupitem relative"
                   :class="{ 
                     'bg-bg-active rounded': isCollectionHierarchyExpanded(collection.id),
                     'bg-accent-blue/10 border border-dashed border-accent-blue rounded': dropTarget?.type === 'collection' && dropTarget?.id === collection.id
@@ -2069,7 +2069,7 @@ defineExpose({
         <div v-for="collection in collectionsWithGroups" :key="collection.id" class="mb-1">
           <!-- Collection Header -->
           <div 
-            class="flex items-center gap-2 py-2 px-3 text-text-primary text-[13px] font-semibold cursor-pointer transition-colors duration-fast hover:bg-bg-hover group"
+            class="flex items-center gap-2 py-2 px-3 text-text-primary sidebar-name-collection font-semibold cursor-pointer transition-colors duration-fast hover:bg-bg-hover group"
             @click="toggleCollection(collection.id)"
           >
             <!-- Chevron -->

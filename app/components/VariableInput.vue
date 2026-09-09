@@ -644,7 +644,7 @@ onUnmounted(() => {
   border: 1px solid var(--border-default);
   border-radius: 6px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 1.5;
   color: var(--text-primary);
   outline: none;

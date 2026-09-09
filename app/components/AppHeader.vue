@@ -44,6 +44,8 @@ interface Props {
   hideSidebarChrome?: boolean;
   /** Destination for the header back button on sidebar-less pages */
   backTo?: string;
+  /** Label for the header back button on sidebar-less pages */
+  backLabel?: string;
   /** Saving state passed down to EnvironmentSwitcher to reset its loading */
   isEnvironmentSaving?: boolean;
 }
@@ -63,6 +65,7 @@ const props = withDefaults(defineProps<Props>(), {
   isSidebarCollapsed: false,
   hideSidebarChrome: false,
   backTo: '/admin',
+  backLabel: 'Back',
   isEnvironmentSaving: false,
 });
 
@@ -416,6 +419,18 @@ defineExpose({
           </div>
 
           <!-- Menu Items -->
+          <NuxtLink
+            to="/admin/settings"
+            class="flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors duration-fast"
+            @click="showUserMenu = false"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+            </svg>
+            Accessibility
+          </NuxtLink>
+
           <a
             v-if="isSuperAdmin"
             href="/admin/sso"
@@ -617,6 +632,18 @@ defineExpose({
           </div>
 
           <!-- Menu Items -->
+          <NuxtLink
+            to="/admin/settings"
+            class="flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors duration-fast"
+            @click="showUserMenu = false"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+            </svg>
+            Accessibility
+          </NuxtLink>
+
           <a
             v-if="isSuperAdmin"
             href="/admin/sso"

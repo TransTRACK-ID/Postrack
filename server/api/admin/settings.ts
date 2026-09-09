@@ -18,8 +18,29 @@ interface PersistedRequestTabsSession {
 }
 
 const REQUEST_TABS_QUERY_KEY = 'requestTabsSession';
+const TEXT_SCALE_QUERY_KEY = 'textScale';
 
 const getRequestTabsSettingKey = (userId: string) => `requestTabsSession:${userId}`;
+const getTextScaleSettingKey = (userId: string) => `textScale:${userId}`;
+
+const TEXT_SCALE_MIN = 0.875;
+const TEXT_SCALE_MAX = 1.375;
+const TEXT_SCALE_DEFAULT = 1;
+
+const normalizeTextScale = (value: unknown): number => {
+  const parsed = typeof value === 'number'
+    ? value
+    : typeof value === 'string'
+      ? Number.parseFloat(value)
+      : Number.NaN;
+
+  if (!Number.isFinite(parsed)) {
+    return TEXT_SCALE_DEFAULT;
+  }
+
+  const rounded = Math.round(parsed / 0.025) * 0.025;
+  return Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, rounded));
+};
 
 const parseStoredValue = <T>(value: unknown): T | null => {
   if (value === null || value === undefined) {
@@ -53,6 +74,45 @@ const isValidRequestTabsSession = (value: unknown): value is PersistedRequestTab
       && typeof tab.request === 'object'
       && typeof tab.hasUnsavedChanges === 'boolean'
     ));
+};
+
+const upsertUserSetting = async (settingsKey: string, value: unknown, category: string) => {
+  const now = new Date();
+  const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
+
+  const existing = (await db
+    .select()
+    .from(schema.settings)
+    .where(
+      and(
+        eq(schema.settings.key, settingsKey),
+        isNull(schema.settings.workspaceId)
+      )
+    )
+    .orderBy(desc(schema.settings.updatedAt))
+    .limit(1))[0];
+
+  if (existing) {
+    await db
+      .update(schema.settings)
+      .set({
+        value: serializedValue,
+        category,
+        updatedAt: now,
+        lastModifiedAt: now
+      })
+      .where(eq(schema.settings.id, existing.id));
+    return;
+  }
+
+  await db.insert(schema.settings).values({
+    key: settingsKey,
+    value: serializedValue,
+    category,
+    createdAt: now,
+    updatedAt: now,
+    lastModifiedAt: now
+  });
 };
 
 export default defineEventHandler(async (event) => {
@@ -107,8 +167,45 @@ export default defineEventHandler(async (event) => {
           });
         }
 
-        const now = new Date();
-        const existing = (await db
+        if (session.tabs.length === 0) {
+          const existing = (await db
+            .select()
+            .from(schema.settings)
+            .where(
+              and(
+                eq(schema.settings.key, settingsKey),
+                isNull(schema.settings.workspaceId)
+              )
+            )
+            .orderBy(desc(schema.settings.updatedAt))
+            .limit(1))[0];
+
+          if (existing) {
+            await db
+              .delete(schema.settings)
+              .where(eq(schema.settings.id, existing.id));
+          }
+
+          return { success: true };
+        }
+
+        await upsertUserSetting(settingsKey, session, 'ui-session');
+        return { success: true };
+      }
+    }
+
+    if (requestedKey === TEXT_SCALE_QUERY_KEY) {
+      if (!user?.id) {
+        throw createError({
+          statusCode: 401,
+          statusMessage: 'Unauthorized'
+        });
+      }
+
+      const settingsKey = getTextScaleSettingKey(user.id);
+
+      if (event.method === 'GET') {
+        const setting = (await db
           .select()
           .from(schema.settings)
           .where(
@@ -120,40 +217,18 @@ export default defineEventHandler(async (event) => {
           .orderBy(desc(schema.settings.updatedAt))
           .limit(1))[0];
 
-        if (session.tabs.length === 0) {
-          if (existing) {
-            await db
-              .delete(schema.settings)
-              .where(eq(schema.settings.id, existing.id));
-          }
+        const stored = parseStoredValue<number | string>(setting?.value);
+        return {
+          scale: normalizeTextScale(stored ?? TEXT_SCALE_DEFAULT)
+        };
+      }
 
-          return { success: true };
-        }
+      if (event.method === 'POST') {
+        const body = await readBody<{ scale?: unknown }>(event);
+        const scale = normalizeTextScale(body?.scale);
 
-        const serializedSession = JSON.stringify(session);
-
-        if (existing) {
-          await db
-            .update(schema.settings)
-            .set({
-              value: serializedSession,
-              category: 'ui-session',
-              updatedAt: now,
-              lastModifiedAt: now
-            })
-            .where(eq(schema.settings.id, existing.id));
-        } else {
-          await db.insert(schema.settings).values({
-            key: settingsKey,
-            value: serializedSession,
-            category: 'ui-session',
-            createdAt: now,
-            updatedAt: now,
-            lastModifiedAt: now
-          });
-        }
-
-        return { success: true };
+        await upsertUserSetting(settingsKey, scale, 'accessibility');
+        return { success: true, scale };
       }
     }
 
@@ -169,8 +244,8 @@ export default defineEventHandler(async (event) => {
         )
         .limit(1))[0];
 
-      return { 
-        bearerToken: (setting?.value as string) || '' 
+      return {
+        bearerToken: (setting?.value as string) || ''
       };
     }
 
@@ -178,7 +253,6 @@ export default defineEventHandler(async (event) => {
       const body = await readBody(event);
       const now = new Date();
 
-      // Check if setting exists
       const existing = (await db
         .select()
         .from(schema.settings)
@@ -191,7 +265,6 @@ export default defineEventHandler(async (event) => {
         .limit(1))[0];
 
       if (existing) {
-        // Update existing
         await db
           .update(schema.settings)
           .set({
@@ -201,7 +274,6 @@ export default defineEventHandler(async (event) => {
           })
           .where(eq(schema.settings.id, existing.id));
       } else {
-        // Insert new
         await db.insert(schema.settings).values({
           key: 'bearerToken',
           value: body.bearerToken,

@@ -15,6 +15,8 @@
    These will be phased out as components are migrated
    ============================================ */
 :root {
+  --text-scale: 1;
+
   /* === Colors === */
   /* Backgrounds */
   --bg-primary: #1C1C1C;
@@ -109,12 +111,25 @@
     @apply box-border;
   }
 
+  html {
+    font-size: calc(16px * var(--text-scale, 1));
+  }
+
   html, body {
     @apply m-0 p-0 h-full;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-sans);
+  }
+
+  body {
     @apply text-sm leading-normal antialiased;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      transition: font-size 150ms ease;
+    }
   }
 
   #__nuxt {
@@ -168,8 +183,23 @@
   }
 
   .shj-lang-js, .shj-lang-ts, .shj-lang-json, .shj-lang-python, .shj-lang-html, .shj-lang-css, .shj-lang-bash, .shj-lang-shell {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
+}
+
+/* Scale Tailwind arbitrary pixel font utilities with the accessibility multiplier */
+@layer utilities {
+  .text-\[8px\] { font-size: calc(8px * var(--text-scale, 1)) !important; }
+  .text-\[9px\] { font-size: calc(9px * var(--text-scale, 1)) !important; }
+  .text-\[10px\] { font-size: calc(10px * var(--text-scale, 1)) !important; }
+  .text-\[11px\] { font-size: calc(11px * var(--text-scale, 1)) !important; }
+  .text-\[12px\] { font-size: calc(12px * var(--text-scale, 1)) !important; }
+  .text-\[13px\] { font-size: calc(13px * var(--text-scale, 1)) !important; }
+  .text-\[14px\] { font-size: calc(14px * var(--text-scale, 1)) !important; }
+  .text-\[15px\] { font-size: calc(15px * var(--text-scale, 1)) !important; }
+  .text-\[16px\] { font-size: calc(16px * var(--text-scale, 1)) !important; }
+  .text-\[18px\] { font-size: calc(18px * var(--text-scale, 1)) !important; }
+  .text-\[20px\] { font-size: calc(20px * var(--text-scale, 1)) !important; }
 }
 
 /* ============================================
@@ -361,6 +391,18 @@
   .tree-folder {
     @apply font-medium;
     color: var(--text-primary);
+  }
+
+  /* Sidebar tree labels — scale explicitly with accessibility text size */
+  .sidebar-name-project {
+    font-size: calc(13px * var(--text-scale, 1));
+    line-height: 1.4;
+  }
+
+  .sidebar-name-collection,
+  .sidebar-name-folder {
+    font-size: calc(12px * var(--text-scale, 1));
+    line-height: 1.4;
   }
 
   /* Modal (base styles - components will use Tailwind classes) */

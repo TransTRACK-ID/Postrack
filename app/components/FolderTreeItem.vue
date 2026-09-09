@@ -241,7 +241,7 @@ const isBeforeRequestsDrop = computed(() =>
     <!-- Folder Header -->
     <div
       :class="[
-        'flex items-center gap-1.5 py-1.5 px-3 text-text-primary text-xs font-medium cursor-pointer transition-colors duration-fast group relative',
+        'flex items-center gap-1.5 py-1.5 px-3 text-text-primary sidebar-name-folder font-medium cursor-pointer transition-colors duration-fast group relative',
         isFolderDropInside ? 'bg-accent-blue/10 border border-dashed border-accent-blue rounded' : '',
         (isFolderDropBefore || isFolderDropAfter) ? 'bg-accent-blue/5' : '',
         !isValidDropTarget() && (draggingFolderId || draggingRequestId) ? 'opacity-40' : ''
