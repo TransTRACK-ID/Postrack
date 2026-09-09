@@ -112,6 +112,88 @@ interface ImportErrorResponse {
 const FETCH_TIMEOUT = 30000; // 30 seconds
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+function normalizePostmanFileName(fileName: string | null | undefined): string | undefined {
+  if (!fileName) return undefined;
+  return fileName
+    .replace(/\.postman_collection\.json$/i, '')
+    .replace(/\.postman_collection$/i, '')
+    .replace(/\.json$/i, '');
+}
+
+interface ImportEnvironmentVariable {
+  key: string;
+  value: string;
+  isSecret: boolean;
+}
+
+async function importEnvironmentVariables(
+  projectId: string,
+  envName: string,
+  variables: ImportEnvironmentVariable[]
+): Promise<{ id: string; name: string; variableCount: number; created: boolean }> {
+  const existingEnvironments = await db
+    .select()
+    .from(environments)
+    .where(eq(environments.projectId, projectId));
+
+  const existingEnvironment = existingEnvironments.find(
+    e => e.name.toLowerCase() === envName.toLowerCase()
+  );
+
+  let environmentId: string;
+  let created = false;
+
+  if (existingEnvironment) {
+    environmentId = existingEnvironment.id;
+  } else {
+    const newEnvironment = (await db
+      .insert(environments)
+      .values({
+        projectId,
+        name: envName,
+        isActive: false
+      })
+      .returning())[0];
+    environmentId = newEnvironment.id;
+    created = true;
+  }
+
+  const existingVariables = await db
+    .select()
+    .from(environmentVariables)
+    .where(eq(environmentVariables.environmentId, environmentId));
+
+  const variablesByKey = new Map(existingVariables.map(variable => [variable.key, variable]));
+
+  for (const variable of variables) {
+    const existingVariable = variablesByKey.get(variable.key);
+
+    if (existingVariable) {
+      await db
+        .update(environmentVariables)
+        .set({
+          value: variable.value,
+          isSecret: variable.isSecret
+        })
+        .where(eq(environmentVariables.id, existingVariable.id));
+    } else {
+      await db.insert(environmentVariables).values({
+        environmentId,
+        key: variable.key,
+        value: variable.value,
+        isSecret: variable.isSecret
+      });
+    }
+  }
+
+  return {
+    id: environmentId,
+    name: envName,
+    variableCount: variables.length,
+    created
+  };
+}
+
 export default defineEventHandler(async (event): Promise<ImportSuccessResponse | ImportErrorResponse> => {
   try {
     // Get content type to determine if it's multipart form data or JSON
@@ -176,7 +258,7 @@ export default defineEventHandler(async (event): Promise<ImportSuccessResponse |
       }
 
       projectId = fields.projectId;
-      name = fields.name || fileName?.replace(/\.json$/i, '') || undefined;
+      name = fields.name || normalizePostmanFileName(fileName) || undefined;
       source = 'file';
       collectionContent = fileContent;
       environmentsContent = envFileContent || fields.environments;
@@ -651,33 +733,23 @@ export default defineEventHandler(async (event): Promise<ImportSuccessResponse |
 
     // Import environments if requested
     if (importEnvironments) {
-      // First, check if collection has variables - create as an environment
+      // First, check if collection has variables - create or merge as an environment
       if (parsedCollection.variables.length > 0) {
-        const collectionEnv = (await db
-          .insert(environments)
-          .values({
-            projectId,
-            name: `${collectionName} Variables`,
-            isActive: false
-          })
-          .returning())[0];
+        const collectionEnvResult = await importEnvironmentVariables(
+          projectId,
+          `${collectionName} Variables`,
+          parsedCollection.variables
+        );
 
-        for (const variable of parsedCollection.variables) {
-          await db.insert(environmentVariables)
-            .values({
-              environmentId: collectionEnv.id,
-              key: variable.key,
-              value: variable.value,
-              isSecret: variable.isSecret
-            });
-          totalVariablesCreated++;
+        totalVariablesCreated += collectionEnvResult.variableCount;
+
+        if (collectionEnvResult.created) {
+          createdEnvironments.push({
+            id: collectionEnvResult.id,
+            name: collectionEnvResult.name,
+            variableCount: collectionEnvResult.variableCount
+          });
         }
-
-        createdEnvironments.push({
-          id: collectionEnv.id,
-          name: collectionEnv.name,
-          variableCount: parsedCollection.variables.length
-        });
       }
 
       // Parse and import separate environment files if provided
@@ -693,31 +765,21 @@ export default defineEventHandler(async (event): Promise<ImportSuccessResponse |
               const envResult = parsePostmanEnvironment(envItem);
               
               if (envResult.success && envResult.data) {
-                const newEnv = (await db
-                  .insert(environments)
-                  .values({
-                    projectId,
-                    name: envResult.data.name,
-                    isActive: false
-                  })
-                  .returning())[0];
+                const envImportResult = await importEnvironmentVariables(
+                  projectId,
+                  envResult.data.name,
+                  envResult.data.variables
+                );
 
-                for (const variable of envResult.data.variables) {
-                  await db.insert(environmentVariables)
-                    .values({
-                      environmentId: newEnv.id,
-                      key: variable.key,
-                      value: variable.value,
-                      isSecret: variable.isSecret
-                    });
-                  totalVariablesCreated++;
+                totalVariablesCreated += envImportResult.variableCount;
+
+                if (envImportResult.created) {
+                  createdEnvironments.push({
+                    id: envImportResult.id,
+                    name: envImportResult.name,
+                    variableCount: envImportResult.variableCount
+                  });
                 }
-
-                createdEnvironments.push({
-                  id: newEnv.id,
-                  name: newEnv.name,
-                  variableCount: envResult.data.variables.length
-                });
               }
             }
           }

@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 import ViewToggle from './ViewToggle.vue';
 import EnvironmentListItem from './EnvironmentListItem.vue';
 import EnvironmentVariablesPanel from './EnvironmentVariablesPanel.vue';
-import Modal from './Modal.vue';
 
 interface EnvironmentVariable {
   id: string;
@@ -45,7 +44,7 @@ const emit = defineEmits<{
   create: [];
   'update:environment': [];
   activate: [environment: Environment];
-  rename: [environment: Environment, newName: string];
+  rename: [environment: Environment];
   duplicate: [environment: Environment];
   delete: [environment: Environment];
   'update:variable': [variable: EnvironmentVariable, key: string, value: string, isSecret: boolean];
@@ -66,13 +65,6 @@ const selectedEnvironment = computed<Environment | null>(() => {
   if (!selectedEnvironmentId.value || !showVariablesPanel.value) return null;
   return props.environments.find(e => e.id === selectedEnvironmentId.value) || null;
 });
-
-// Modal states (managed internally for rename/delete)
-const showRenameModal = ref(false);
-const showDeleteModal = ref(false);
-const environmentToRename = ref<Environment | null>(null);
-const environmentToDelete = ref<Environment | null>(null);
-const renameForm = ref({ name: '' });
 
 // Search and filter
 const filteredEnvironments = computed(() => {
@@ -136,30 +128,11 @@ const handleActivate = (environment: Environment) => {
 };
 
 const handleRenameClick = (environment: Environment) => {
-  environmentToRename.value = environment;
-  renameForm.value.name = environment.name;
-  showRenameModal.value = true;
-};
-
-const confirmRename = () => {
-  if (environmentToRename.value && renameForm.value.name.trim()) {
-    emit('rename', environmentToRename.value, renameForm.value.name.trim());
-    showRenameModal.value = false;
-    environmentToRename.value = null;
-  }
+  emit('rename', environment);
 };
 
 const handleDeleteClick = (environment: Environment) => {
-  environmentToDelete.value = environment;
-  showDeleteModal.value = true;
-};
-
-const confirmDelete = () => {
-  if (environmentToDelete.value) {
-    emit('delete', environmentToDelete.value);
-    showDeleteModal.value = false;
-    environmentToDelete.value = null;
-  }
+  emit('delete', environment);
 };
 
 const handleDuplicate = (environment: Environment) => {
@@ -444,45 +417,5 @@ const clearSearch = () => {
       @toggle:secret="emit('toggle:secret', $event)"
     />
 
-    <!-- Rename Modal -->
-    <Modal
-      :show="showRenameModal"
-      title="Rename Environment"
-      size="sm"
-      @close="showRenameModal = false"
-    >
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-text-secondary mb-1.5">Environment Name</label>
-          <input
-            v-model="renameForm.name"
-            type="text"
-            class="w-full py-2 px-3 bg-bg-input border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-blue focus:shadow-[0_0_0_2px_rgba(59,130,246,0.2)]"
-            placeholder="Enter environment name"
-            @keyup.enter="confirmRename"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <button class="btn btn-secondary" @click="showRenameModal = false">Cancel</button>
-        <button class="btn btn-primary" @click="confirmRename" :disabled="!renameForm.name.trim()">Rename</button>
-      </template>
-    </Modal>
-
-    <!-- Delete Confirmation Modal -->
-    <Modal
-      :show="showDeleteModal"
-      title="Delete Environment"
-      size="sm"
-      @close="showDeleteModal = false"
-    >
-      <p class="text-sm text-text-secondary">
-        Are you sure you want to delete <strong class="text-text-primary">{{ environmentToDelete?.name }}</strong>? This action cannot be undone.
-      </p>
-      <template #footer>
-        <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
-        <button class="btn btn-danger" @click="confirmDelete">Delete</button>
-      </template>
-    </Modal>
   </div>
 </template>

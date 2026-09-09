@@ -100,21 +100,25 @@ export default defineEventHandler(async (event) => {
         });
       }
 
-      // Check for duplicate names within the same project (case-insensitive), excluding current environment
-      const environmentsInProject = await db
-        .select()
-        .from(environments)
-        .where(eq(environments.projectId, existing.projectId));
+      const isNameChanging = trimmedName.toLowerCase() !== existing.name.toLowerCase();
 
-      const duplicate = environmentsInProject.find(
-        e => e.id !== id && e.name.toLowerCase() === trimmedName.toLowerCase()
-      );
+      // Only check for duplicates when the name is actually changing
+      if (isNameChanging) {
+        const environmentsInProject = await db
+          .select()
+          .from(environments)
+          .where(eq(environments.projectId, existing.projectId));
 
-      if (duplicate) {
-        throw createError({
-          statusCode: 409,
-          statusMessage: `Environment "${trimmedName}" already exists in this project`
-        });
+        const duplicate = environmentsInProject.find(
+          e => e.id !== id && e.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+
+        if (duplicate) {
+          throw createError({
+            statusCode: 409,
+            statusMessage: `Environment "${trimmedName}" already exists in this project`
+          });
+        }
       }
 
       updateData.name = trimmedName;
